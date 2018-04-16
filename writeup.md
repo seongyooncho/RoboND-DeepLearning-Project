@@ -19,7 +19,7 @@ The network consists of  3 encoder layers and 3 decoder layers connected with 1x
 Here are actual implementations of code encoder and decoder blocks and FCN model.
 
 #### Encoder block
-It’s in the 4th block of `code/model_training.ipynb`. It simply applies separable convolution and batch normalization to input layer.
+It’s in the 4th block of `code/model_training.ipynb`. It simply applies depthwise separable convolution and batch normalization to input layer. It drastically reduces parameters needed than normal convolution. So it’s a lot faster and efficient.
 ```python
 def encoder_block(input_layer, filters, strides):
     output_layer = separable_conv2d_batchnorm(input_layer, filters, strides)
@@ -27,7 +27,7 @@ def encoder_block(input_layer, filters, strides):
 ```
 
 #### Decoder block
-It’s in the 5th block of `code/model_training.ipnyb`. It first upsamples input layer. Then concatenate the result with **skip connected** layer to preserve details. Finally, add separable convolution and batch normalization three times.
+It’s in the 5th block of `code/model_training.ipnyb`. It first upsamples input layer. After upsampling, we have bigger image with detected information, but the image itself has low definition. To solve this problem, we concatenate the result with **skip connected** layer from encoders or input. It revives image definition and preserves detail. Finally, add separable convolution and batch normalization three times.
 ```python
 def decoder_block(small_ip_layer, large_ip_layer, filters):
     upsampled = bilinear_upsample(small_ip_layer)
@@ -38,8 +38,11 @@ def decoder_block(small_ip_layer, large_ip_layer, filters):
     return output_layer
 ```
 
+#### 1x1 convolution
+When we make a classifier, we use fully connected layer at the end. It can tell probabilities like if there’s target or not. But in this project, we want to know not only **if** there’s target, bu also **where** is target. To know where, or exact pixels, fully connected layer is not enough. We have to preserve spatial information after applying fully connected layer. A 1x1 convolution acts just what we want. It detects probabilities just like fully connected layer and also preserves spatial information and pass it to the following decoders.
+
 #### FCN model
-It’s in the 6th block of `code/model_training.ipnyb`. It utilizes previously defined encoder and decoder block. First, add three encoder blocks to input layer. Then apply 1x1 convolution. It functions just like fully connected layer but preserves spatial information. Lastly, add three decoder blocks to restore image.
+It’s in the 6th block of `code/model_training.ipnyb`. It utilizes previously defined encoder and decoder block. First, add three encoder blocks to input layer. Then apply 1x1 convolution to detect target preserving spatial information. Lastly, add three decoder blocks to restore image.
 ```python
 def fcn_model(inputs, num_classes):
     # Encoders
@@ -94,10 +97,13 @@ I got `0.420488738606` with this model.
 ## Future Enhancements
 I haven’t used my own collected data. There’s no need to do that for passing this project. But if the goals change, I definitely need to collect the data on my own. 
 
-### Another person
+### Following another objects
+It is not possible following another objects with this model and dataset because it is trained for specific person with specific cloth. But it should be possible to do that using our model with different training dataset.
+
+#### Another person
 Our target is very easy to recognize since she is the only one with vivid red suit on. If our target is another person, I must be struggle to pass the project. Things I can consider now is making a more complex FCN model, collecting huge amount of data.
 
-### Another objects like dogs
+#### Another objects like dogs
 It depends on if there’s only one dog or many dogs. 
 It will be easier if there’s only one dog to follow. Because dog’s shape is very distinct than other people. 
 But if there’s many dogs and I have to find only one dog among them, it’ll be harder. Since dogs usually don’t wear clothes, it’ll be difficult to identify only with their skin pattern.
